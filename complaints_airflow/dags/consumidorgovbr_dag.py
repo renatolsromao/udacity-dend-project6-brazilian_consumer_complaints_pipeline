@@ -41,6 +41,7 @@ has_file_to_process = S3KeySensor(
     aws_conn_id=aws_credentials,
     timeout=31,
     poke_interval=30,
+    soft_fail=True,
 )
 
 convert_file_encoding = S3ConvertFilesEncodingOperator(
