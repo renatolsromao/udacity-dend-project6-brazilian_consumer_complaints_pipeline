@@ -13,7 +13,7 @@ fact_queries = {
             rating int,
             foreign key(ts) references dm_date(ts),
             foreign key(city) references dm_region(city),
-            foreign key(consumer_id) references dm_consumer(consumer_id),
+            foreign key(consumer_id) references dm_consumer_profile(consumer_id),
             foreign key(company_name) references dm_company(name)
         );
     """

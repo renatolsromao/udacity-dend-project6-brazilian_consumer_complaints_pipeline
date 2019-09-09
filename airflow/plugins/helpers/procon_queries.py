@@ -1,11 +1,11 @@
 procon_queries = {
 
     'drop_stage_table': """
-        drop table if exists {};
+        drop table if exists staging.procon;
     """,
 
     'create_stage_table': """
-        create table {} (
+        create table staging.procon (
             ano_atendimento int,
             trimestre_atendimento int,
             mes_atendimento int,
@@ -37,17 +37,15 @@ procon_queries = {
     """,
 
     'insert_dm_date': """
-        insert into dm_date (ts, year, quarter, month, day, day_of_week, hour, minute)
+        insert into dm_date (ts, year, quarter, month, day, day_of_week)
         select distinct 	
                 data_atendimento as ts,    
                 date_part('y', data_atendimento) as year,
                 date_part('qtr', data_atendimento) as quarter,
                 date_part('mon', data_atendimento) as month,
                 date_part('d', data_atendimento) as day,
-                date_part('dow', data_atendimento) as day_of_week,
-                date_part('h', data_atendimento)::int as hour,
-                date_part('m', data_atendimento)::int as minute
-        from dadosabertosatendimentofornecedor1trimestre2017 as p
+                date_part('dow', data_atendimento) as day_of_week
+        from staging.procon as p
         left join dm_date as d on d.ts = p.data_atendimento
         where d.ts is null;
     """,
@@ -58,21 +56,21 @@ procon_queries = {
             cit.cidade_nome,
             uf,
             regiao
-        from dadosabertosatendimentofornecedor1trimestre2017 as proc
-        left join cep as cep on cep.cep = proc.cep_consumidor
-        left join cities as cit on cit.cidade_id = cep.cidade_id
+        from staging.procon as proc
+        left join staging.cep as cep on cep.cep = proc.cep_consumidor
+        left join staging.cities as cit on cit.cidade_id = cep.cidade_id
         left join dm_region as reg on cit.cidade_nome = reg.city
         where 
             reg.city is null
             AND cit.cidade_nome is not null;
     """,
 
-    'insert_dm_consumer': """
+    'insert_dm_consumer_profile': """
         select distinct
             faixa_etaria_consumidor as age,
             sexo_consumidor as gender
-        from dadosabertosatendimentofornecedor1trimestre2017 as p
-        left join dm_consumer as c on (c.age = p.faixa_etaria_consumidor and c.gender = p.sexo_consumidor)
+        from staging.procon as p
+        left join dm_consumer_profile as c on (c.age = p.faixa_etaria_consumidor and c.gender = p.sexo_consumidor)
         where c.age is null;
     """,
 
@@ -81,7 +79,7 @@ procon_queries = {
         select distinct
             NVL(nome_fantasia_sindec, razao_social_sindec) as name,
             descricao_cnae_principal as segment
-        from dadosabertosatendimentofornecedor1trimestre2017 as p
+        from staging.procon as p
         left join dm_company as c on c.name = p.nome_fantasia_sindec
         where 
             c.name is null
@@ -99,10 +97,10 @@ procon_queries = {
             'procon' as channel,
             NULL as time_to_answer,
             NULL as rating
-        from dadosabertosatendimentofornecedor1trimestre2017 as proc
-        left join cep as cep on cep.cep = proc.cep_consumidor
-        left join cities as cit on cit.cidade_id = cep.cidade_id
-        left join dm_consumer as con on (proc.faixa_etaria_consumidor = con.age and proc.sexo_consumidor = con.gender)
+        from staging.procon as proc
+        left join staging.cep as cep on cep.cep = proc.cep_consumidor
+        left join staging.cities as cit on cit.cidade_id = cep.cidade_id
+        left join dm_consumer_profile as con on (proc.faixa_etaria_consumidor = con.age and proc.sexo_consumidor = con.gender)
         where
             COALESCE(nome_fantasia_sindec, razao_social_sindec) is not null;
     """,
