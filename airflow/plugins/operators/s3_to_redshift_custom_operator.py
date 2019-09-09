@@ -72,7 +72,7 @@ class S3ToRedshiftCustomOperator(BaseOperator):
 
         copy_query = """
             COPY {table}
-            FROM 's3://{s3_key}/{s3_bucket}'
+            FROM 's3://{s3_bucket}/{s3_key}'
             with credentials
             'aws_access_key_id={access_key};aws_secret_access_key={secret_key}'
             {copy_options};

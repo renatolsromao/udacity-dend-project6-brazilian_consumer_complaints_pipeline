@@ -1,11 +1,11 @@
 import datetime
 
-from airflow.operators.s3_to_redshift_operator import S3ToRedshiftTransfer
 from airflow.utils.helpers import chain
 
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.postgres_operator import PostgresOperator
+from airflow.operators import (S3ToRedshiftCustomOperator)
 
 from helpers.dimensions_queries import dimensions_queries
 from helpers.fact_queries import fact_queries
@@ -19,7 +19,9 @@ dag = DAG(
     'procon_dag',
     description='Load data from Procon complaints from S3 to Redshift.',
     start_date=datetime.datetime(2019, 8, 1),
-    catchup=False
+    schedule_interval=None,
+    catchup=False,
+    max_active_runs=1,
 )
 
 start_operator = DummyOperator(task_id='begin_execution', dag=dag)
@@ -29,20 +31,20 @@ create_procon_stage_table = PostgresOperator(
     dag=dag,
     postgres_conn_id='redshift_conn',
     sql=[
-        procon_queries['drop_stage_table'].format(s3_file),
-        procon_queries['create_stage_table'].format(s3_file)
+        procon_queries['drop_stage_table'],
+        procon_queries['create_stage_table']
     ]
 )
 
-load_procon_stage_data = S3ToRedshiftTransfer(
+load_procon_stage_data = S3ToRedshiftCustomOperator(
     task_id='load_procon_stage_data',
     dag=dag,
     aws_conn_id='aws_credentials',
     redshift_conn_id='redshift_conn',
-    schema='public',
-    table=s3_file,
+    schema='staging',
+    table='procon',
     s3_bucket=s3_bucket,
-    s3_key=s3_folder,
+    s3_key=f'{s3_folder}/{s3_file}',
     copy_options=[
         "DELIMITER AS ';'",
         "DATEFORMAT AS 'DD/MM/YYYY'",
@@ -57,7 +59,7 @@ load_dm_date_data = PostgresOperator(
     dag=dag,
     postgres_conn_id='redshift_conn',
     sql=[
-        dimensions_queries['create_dm_date_table'],
+        dimensions_queries['create_dm_date'],
         procon_queries['insert_dm_date']
     ]
 )
@@ -77,8 +79,8 @@ load_dm_consumer_data = PostgresOperator(
     dag=dag,
     postgres_conn_id='redshift_conn',
     sql=[
-        dimensions_queries['create_dm_consumer'],
-        procon_queries['insert_dm_consumer']
+        dimensions_queries['create_dm_consumer_profile'],
+        procon_queries['insert_dm_consumer_profile']
     ]
 )
 
@@ -102,10 +104,21 @@ load_ft_complaints_data = PostgresOperator(
     ]
 )
 
+drop_procon_stage_table = PostgresOperator(
+    task_id='drop_procon_stage_table',
+    dag=dag,
+    postgres_conn_id='redshift_conn',
+    sql=procon_queries['drop_stage_table']
+)
+
+end_operator = DummyOperator(task_id='finish_execution', dag=dag)
+
 chain(
     start_operator,
     create_procon_stage_table,
     load_procon_stage_data,
     [load_dm_date_data, load_dm_region_data, load_dm_consumer_data, load_dm_company_data],
-    load_ft_complaints_data
+    load_ft_complaints_data,
+    drop_procon_stage_table,
+    end_operator
 )
