@@ -11,4 +11,6 @@ class CustomPlugin(AirflowPlugin):
         operators.S3ToRedshiftCustomOperator,
         operators.S3ConvertFilesEncodingOperator,
         operators.S3DeleteFromContextOperator,
+        operators.RedshiftDataQualityOperator,
+        operators.RedshiftCompareResultsOperator
     ]

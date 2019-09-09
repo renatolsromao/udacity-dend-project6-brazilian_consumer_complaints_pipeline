@@ -1,11 +1,16 @@
+dm_region_table = 'dm_region'
+dm_date_table = 'dm_date'
+dm_consumer_profile_table = 'dm_consumer_profile'
+dm_company_table = 'dm_company'
+
 dimensions_queries = {
 
-    'drop_dm_date_table': """
-        drop table if exists dm_date;
+    'drop_dm_date_table': f"""
+        drop table if exists {dm_date_table};
     """,
 
-    'create_dm_date': """
-        create table if not exists dm_date (
+    'create_dm_date': f"""
+        create table if not exists {dm_date_table} (
             ts timestamptz PRIMARY KEY,
             year int,
             quarter int,
@@ -15,36 +20,36 @@ dimensions_queries = {
         );
     """,
 
-    'drop_dm_region_table': """
-        drop table if exists dm_region;
+    'drop_dm_region_table': f"""
+        drop table if exists {dm_region_table};
     """,
 
-    'create_dm_region': """
-        create table if not exists dm_region (
+    'create_dm_region': f"""
+        create table if not exists {dm_region_table} (
             city text PRIMARY KEY,
             state text,
             region text
         );
     """,
 
-    'drop_dm_consumer_profile_table': """
-        drop table if exists dm_consumer_profile;
+    'drop_dm_consumer_profile_table': f"""
+        drop table if exists {dm_consumer_profile_table};
     """,
 
-    'create_dm_consumer_profile': """
-        create table if not exists dm_consumer_profile (
+    'create_dm_consumer_profile': f"""
+        create table if not exists {dm_consumer_profile_table} (
             consumer_id int identity(0,1) primary key,
             age text,
             gender text
         );
     """,
 
-    'drop_dm_company_table': """
-        drop table if exists dm_company;
+    'drop_dm_company_table': f"""
+        drop table if exists {dm_company_table};
     """,
 
-    'create_dm_company': """
-        create table if not exists dm_company (
+    'create_dm_company': f"""
+        create table if not exists {dm_company_table} (
             name text primary key,
             segment text
         );

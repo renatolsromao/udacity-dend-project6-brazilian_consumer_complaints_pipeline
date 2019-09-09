@@ -7,19 +7,24 @@ from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.postgres_operator import PostgresOperator
 
+from airflow.operators import (S3ConvertFilesEncodingOperator, S3ToRedshiftCustomOperator,
+                               RedshiftDataQualityOperator, RedshiftCompareResultsOperator)
 from subdags.delete_s3_key_files_subdag import delete_s3_key_files_subdag
+from subdags.dimensions_data_quality_check_subdag import dimensions_data_quality_check_subdag
 from helpers.fact_queries import fact_queries
 from helpers.dimensions_queries import dimensions_queries
 from helpers.consumidorgovbr_queries import consumidorgovbr_queries
-from airflow.operators import (S3ConvertFilesEncodingOperator, S3ToRedshiftCustomOperator)
+from helpers.generic_queries import generic_queries
+
 
 DAG_NAME = 'consumidorgovbr_dag'
 start_date = datetime.datetime(2019, 9, 1)
 
-aws_credentials = 'aws_credentials'
-s3_bucket = 'rlsr-dend'
-s3_key = 'consumer-complaints/consumidorgovbr'
-table = 'cgb'
+REDSHIFT_CONN = 'redshift_conn'
+AWS_CREDENTIALS = 'aws_credentials'
+S3_BUCKET = 'rlsr-dend'
+S3_KEY = 'consumer-complaints/consumidorgovbr'
+STAGING_TABLE = 'cgb'
 
 dag = DAG(
     DAG_NAME,
@@ -35,10 +40,10 @@ start_operator = DummyOperator(task_id='begin_execution', dag=dag)
 has_file_to_process = S3KeySensor(
     task_id='has_file_to_process',
     dag=dag,
-    bucket_name=s3_bucket,
-    bucket_key=f'{s3_key}/*.csv',
+    bucket_name=S3_BUCKET,
+    bucket_key=f'{S3_KEY}/*.csv',
     wildcard_match=True,
-    aws_conn_id=aws_credentials,
+    aws_conn_id=AWS_CREDENTIALS,
     timeout=31,
     poke_interval=30,
     soft_fail=True,
@@ -47,9 +52,9 @@ has_file_to_process = S3KeySensor(
 convert_file_encoding = S3ConvertFilesEncodingOperator(
     task_id='convert_file_encoding',
     dag=dag,
-    aws_conn_id=aws_credentials,
-    s3_bucket=s3_bucket,
-    s3_prefix=s3_key,
+    aws_conn_id=AWS_CREDENTIALS,
+    s3_bucket=S3_BUCKET,
+    s3_prefix=S3_KEY,
     original_encoding='CP1252',
     dest_encoding='UTF-8',
 )
@@ -57,7 +62,7 @@ convert_file_encoding = S3ConvertFilesEncodingOperator(
 create_consumidorgov_stage_table = PostgresOperator(
     task_id='create_consumidorgov_stage_table',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         consumidorgovbr_queries['drop_stage_table'],
         consumidorgovbr_queries['create_stage_table']
@@ -68,11 +73,11 @@ load_consumidorgovbr_stage_data = S3ToRedshiftCustomOperator(
     task_id='load_consumidorgovbr_stage_data',
     dag=dag,
     schema='staging',
-    s3_bucket=s3_bucket,
-    s3_key=s3_key,
-    table=table,
-    redshift_conn_id='redshift_conn',
-    aws_conn_id=aws_credentials,
+    s3_bucket=S3_BUCKET,
+    s3_key=S3_KEY,
+    table=STAGING_TABLE,
+    redshift_conn_id=REDSHIFT_CONN,
+    aws_conn_id=AWS_CREDENTIALS,
     copy_options=[
         "DELIMITER AS ';'",
         "DATEFORMAT AS 'DD/MM/YYYY'",
@@ -81,17 +86,18 @@ load_consumidorgovbr_stage_data = S3ToRedshiftCustomOperator(
     ]
 )
 
+subdag_task_id = 'delete_s3_key_files'
 delete_s3_key_files = SubDagOperator(
-    task_id='delete_s3_key_files',
+    task_id=subdag_task_id,
     dag=dag,
     subdag=delete_s3_key_files_subdag(
-        DAG_NAME, 'delete_s3_key_files', start_date, s3_bucket, s3_key, aws_credentials)
+        DAG_NAME, subdag_task_id, start_date, S3_BUCKET, S3_KEY, AWS_CREDENTIALS)
 )
 
 load_dm_date_data = PostgresOperator(
     task_id='load_dm_date_data',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         dimensions_queries['create_dm_date'],
         consumidorgovbr_queries['insert_dm_date']
@@ -101,7 +107,7 @@ load_dm_date_data = PostgresOperator(
 load_dm_region_data = PostgresOperator(
     task_id='load_dm_region_data',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         dimensions_queries['create_dm_region'],
         consumidorgovbr_queries['insert_dm_region']
@@ -111,7 +117,7 @@ load_dm_region_data = PostgresOperator(
 load_dm_consumer_data = PostgresOperator(
     task_id='load_dm_consumer_data',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         dimensions_queries['create_dm_consumer_profile'],
         consumidorgovbr_queries['insert_dm_consumer_profile']
@@ -121,7 +127,7 @@ load_dm_consumer_data = PostgresOperator(
 load_dm_company_data = PostgresOperator(
     task_id='load_dm_company_data',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         dimensions_queries['create_dm_company'],
         consumidorgovbr_queries['insert_dm_company']
@@ -131,17 +137,34 @@ load_dm_company_data = PostgresOperator(
 load_ft_complaints_data = PostgresOperator(
     task_id='load_ft_complaints_data',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         fact_queries['create_ft_complaints'],
         consumidorgovbr_queries['insert_ft_complaints']
     ]
 )
 
+subdag_task_id = 'dimensions_data_quality_check'
+dimensions_data_quality_check = SubDagOperator(
+    task_id=subdag_task_id,
+    dag=dag,
+    subdag=dimensions_data_quality_check_subdag(
+        DAG_NAME, subdag_task_id, start_date, REDSHIFT_CONN)
+)
+
+fact_data_quality_check = RedshiftCompareResultsOperator(
+    task_id='fact_data_quality_check',
+    dag=dag,
+    redshift_conn_id=REDSHIFT_CONN,
+    query=generic_queries['table_size'].format('ft_complaints'),
+    comparison_query=generic_queries['table_size'].format(f'staging.{STAGING_TABLE}'),
+    operator=lambda x, y: x >= y,
+)
+
 drop_consumidorgov_stage_table = PostgresOperator(
     task_id='drop_consumidorgov_stage_table',
     dag=dag,
-    postgres_conn_id='redshift_conn',
+    postgres_conn_id=REDSHIFT_CONN,
     sql=[
         consumidorgovbr_queries['drop_stage_table']
     ]
@@ -157,6 +180,7 @@ chain(
     load_consumidorgovbr_stage_data,
     [load_dm_date_data, load_dm_region_data, load_dm_consumer_data, load_dm_company_data],
     load_ft_complaints_data,
+    [dimensions_data_quality_check, fact_data_quality_check],
     drop_consumidorgov_stage_table,
     end_operator
 )

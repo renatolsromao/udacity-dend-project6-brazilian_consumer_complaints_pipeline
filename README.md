@@ -89,15 +89,11 @@ To use Airflow web interface, enter on http://localhost:8080/admin
 
 ## Tasks
 
-- [ ] Check if there is divergence between procon and consumidorgovbr
-after importing data to ft_complaints
+- [ ] Data Quality Check Operators!
 - [ ] Analyze resulting DW
-- [ ] Improve CEP coverage by checking at cepaberto API the states that 
-does not have the database
 - [ ] Check for keys improvements
 - [ ] Check for structural improvements (how data is distributed on redshift)
-- [ ] Make every DW table anc column name at the same pattern
+- [ ] Make every DW table and column name at the same pattern
 - [ ] CEP Dag should be part of the Procon DAG ()
 - [ ] Import all CSVs
 - [ ] Create a dashboard
-- [ ] Data Quality Check Operators!
