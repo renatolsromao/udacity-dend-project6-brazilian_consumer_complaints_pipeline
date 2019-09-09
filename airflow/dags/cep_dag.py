@@ -1,5 +1,7 @@
 import datetime
 
+from airflow.utils.helpers import chain
+
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.postgres_operator import PostgresOperator
@@ -7,14 +9,16 @@ from airflow.operators import (S3ToRedshiftCustomOperator)
 
 from helpers.cep_queries import cep_queries
 
-s3_key = 'rlsr-dend'
-s3_bucket = 'cepaberto'
+s3_bucket = 'rlsr-dend'
+s3_key = 'cepaberto'
 
 dag = DAG(
     'cep_dag',
     description='Load CEP data from S3 to Redshift',
     start_date=datetime.datetime(2019, 9, 1),
-    catchup=False
+    schedule_interval=None,
+    catchup=False,
+    max_active_runs=1,
 )
 
 start_operator = DummyOperator(task_id='begin_execution', dag=dag)
@@ -31,9 +35,9 @@ load_states_data = S3ToRedshiftCustomOperator(
     dag=dag,
     redshift_conn_id='redshift_conn',
     aws_conn_id='aws_credentials',
-    s3_key=s3_key,
-    s3_bucket=f'{s3_bucket}/states.csv',
-    schema='public',
+    s3_bucket=s3_bucket,
+    s3_key=f'{s3_key}/states.csv',
+    schema='staging',
     table='states',
     copy_options=[
         "delimiter ','",
@@ -53,9 +57,9 @@ load_cities_table = S3ToRedshiftCustomOperator(
     dag=dag,
     redshift_conn_id='redshift_conn',
     aws_conn_id='aws_credentials',
-    s3_key=s3_key,
-    s3_bucket=f'{s3_bucket}/cities.csv',
-    schema='public',
+    s3_bucket=s3_bucket,
+    s3_key=f'{s3_key}/cities.csv',
+    schema='staging',
     table='cities',
     copy_options=[
         "delimiter ','",
@@ -75,9 +79,9 @@ load_cep_table_data = S3ToRedshiftCustomOperator(
     dag=dag,
     redshift_conn_id='redshift_conn',
     aws_conn_id='aws_credentials',
-    s3_key=s3_key,
-    s3_bucket=f'{s3_bucket}/cep/',
-    schema='public',
+    s3_bucket=s3_bucket,
+    s3_key=f'{s3_key}/cep/',
+    schema='staging',
     table='cep',
     copy_options=[
         "delimiter ','",
@@ -85,11 +89,13 @@ load_cep_table_data = S3ToRedshiftCustomOperator(
     ]
 )
 
-create_states_table.set_upstream(start_operator)
-create_cities_table.set_upstream(start_operator)
+end_operator = DummyOperator(task_id='finish_execution', dag=dag)
 
-load_states_data.set_upstream(create_states_table)
-load_cities_table.set_upstream(create_cities_table)
-
-create_cep_table.set_upstream([load_cities_table, load_states_data])
-load_cep_table_data.set_upstream(create_cep_table)
+chain(
+    start_operator,
+    [create_states_table, create_cities_table],
+    [load_states_data, load_cities_table],
+    create_cep_table,
+    load_cep_table_data,
+    end_operator
+)
