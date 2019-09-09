@@ -89,11 +89,11 @@ To use Airflow web interface, enter on http://localhost:8080/admin
 
 ## Tasks
 
-- [ ] Data Quality Check Operators!
+- [x] Data Quality Check Operators!
 - [ ] Analyze resulting DW
 - [ ] Check for keys improvements
 - [ ] Check for structural improvements (how data is distributed on redshift)
-- [ ] Make every DW table and column name at the same pattern
-- [ ] CEP Dag should be part of the Procon DAG ()
+- [ ] Make every DW table and column name at the same pattern and 
+    change data model schema image
 - [ ] Import all CSVs
 - [ ] Create a dashboard

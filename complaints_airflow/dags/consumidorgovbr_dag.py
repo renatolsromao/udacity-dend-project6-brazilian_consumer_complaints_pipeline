@@ -7,10 +7,9 @@ from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.postgres_operator import PostgresOperator
 
-from airflow.operators import (S3ConvertFilesEncodingOperator, S3ToRedshiftCustomOperator,
-                               RedshiftDataQualityOperator, RedshiftCompareResultsOperator)
+from airflow.operators import (S3ConvertFilesEncodingOperator, S3ToRedshiftCustomOperator)
 from subdags.delete_s3_key_files_subdag import delete_s3_key_files_subdag
-from subdags.dimensions_data_quality_check_subdag import dimensions_data_quality_check_subdag
+from subdags.data_quality_check_subdag import data_quality_check_subdag
 from helpers.fact_queries import fact_queries
 from helpers.dimensions_queries import dimensions_queries
 from helpers.consumidorgovbr_queries import consumidorgovbr_queries
@@ -144,21 +143,11 @@ load_ft_complaints_data = PostgresOperator(
     ]
 )
 
-subdag_task_id = 'dimensions_data_quality_check'
-dimensions_data_quality_check = SubDagOperator(
+subdag_task_id = 'data_quality_check'
+data_quality_check = SubDagOperator(
     task_id=subdag_task_id,
     dag=dag,
-    subdag=dimensions_data_quality_check_subdag(
-        DAG_NAME, subdag_task_id, start_date, REDSHIFT_CONN)
-)
-
-fact_data_quality_check = RedshiftCompareResultsOperator(
-    task_id='fact_data_quality_check',
-    dag=dag,
-    redshift_conn_id=REDSHIFT_CONN,
-    query=generic_queries['table_size'].format('ft_complaints'),
-    comparison_query=generic_queries['table_size'].format(f'staging.{STAGING_TABLE}'),
-    operator=lambda x, y: x >= y,
+    subdag=data_quality_check_subdag(DAG_NAME, subdag_task_id, start_date, REDSHIFT_CONN, STAGING_TABLE)
 )
 
 drop_consumidorgov_stage_table = PostgresOperator(
@@ -180,7 +169,7 @@ chain(
     load_consumidorgovbr_stage_data,
     [load_dm_date_data, load_dm_region_data, load_dm_consumer_data, load_dm_company_data],
     load_ft_complaints_data,
-    [dimensions_data_quality_check, fact_data_quality_check],
+    data_quality_check,
     drop_consumidorgov_stage_table,
     end_operator
 )
