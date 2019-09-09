@@ -1,5 +1,9 @@
 fact_queries = {
 
+    'drop_ft_complaints': """
+        drop table if exists ft_complaints;
+    """,
+
     'create_ft_complaints': """
         create table if not exists ft_complaints (
             complaint_id INT IDENTITY(0,1) primary key,

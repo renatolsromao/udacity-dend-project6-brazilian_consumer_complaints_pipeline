@@ -1,5 +1,9 @@
 cep_queries = {
 
+    'drop_staging_cep': """
+        drop table if exists staging.cep;
+    """,
+
     'create_cep_table': """
         create table if not exists staging.cep (
             cep int,
@@ -10,12 +14,20 @@ cep_queries = {
         );
     """,
 
+    'drop_staging_cities': """
+        drop table if exists staging.cities;
+    """,
+
     'create_cities_table': """
         create table if not exists staging.cities (
             cidade_id int,
             cidade_nome text,
             estado_id int
         );    
+    """,
+
+    'drop_staging_states': """
+        drop table if exists staging.states;
     """,
 
     'create_states_table': """
