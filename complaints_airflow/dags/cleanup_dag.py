@@ -9,7 +9,7 @@ from helpers.consumidorgovbr_queries import consumidorgovbr_queries
 from helpers.procon_queries import procon_queries
 from helpers.fact_queries import fact_queries
 from helpers.dimensions_queries import dimensions_queries
-from helpers.cep_queries import cep_queries
+from helpers.brzipcode_queries import brzipcode_queries
 
 DAG_NAME = 'cleanup_dag'
 start_date = datetime.datetime(2019, 9, 1)
@@ -32,9 +32,7 @@ drop_stage_tables = PostgresOperator(
     sql=[
         procon_queries['drop_stage_table'],
         consumidorgovbr_queries['drop_stage_table'],
-        cep_queries['drop_staging_cep'],
-        cep_queries['drop_staging_cities'],
-        cep_queries['drop_staging_states'],
+        brzipcode_queries['drop_staging_brzipcode'],
     ]
 )
 

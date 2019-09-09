@@ -53,16 +53,15 @@ procon_queries = {
     'insert_dm_region': """
         insert into dm_region (city, region, macroregion)
         select distinct
-            cit.cidade_nome,
-            uf,
-            regiao
+            zc.city,
+            state_abbr,
+            NULL as region
         from staging.procon as proc
-        left join staging.cep as cep on cep.cep = proc.cep_consumidor
-        left join staging.cities as cit on cit.cidade_id = cep.cidade_id
-        left join dm_region as reg on cit.cidade_nome = reg.city
+        left join staging.brzipcode as zc on zc.zipcode = proc.cep_consumidor
+        left join dm_region as reg on zc.city = reg.city
         where 
             reg.city is null
-            AND cit.cidade_nome is not null;
+            AND zc.city is not null;
     """,
 
     'insert_dm_consumer_profile': """
@@ -90,7 +89,7 @@ procon_queries = {
         insert into ft_complaints (ts, city, consumer_id, company_name, type, channel, time_to_answer, rating)
         select
             data_atendimento as ts,
-            cit.cidade_nome as city,
+            zc.city as city,
             con.consumer_id,
             COALESCE(nome_fantasia_sindec, razao_social_sindec) as company_name,
             grupo_assunto as type,
@@ -98,8 +97,7 @@ procon_queries = {
             NULL as time_to_answer,
             NULL as rating
         from staging.procon as proc
-        left join staging.cep as cep on cep.cep = proc.cep_consumidor
-        left join staging.cities as cit on cit.cidade_id = cep.cidade_id
+        left join staging.brzipcode as zc on zc.zipcode = proc.cep_consumidor
         left join dm_consumer_profile as con on (proc.faixa_etaria_consumidor = con.age and proc.sexo_consumidor = con.gender)
         where
             COALESCE(nome_fantasia_sindec, razao_social_sindec) is not null;
