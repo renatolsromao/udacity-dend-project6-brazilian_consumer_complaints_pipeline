@@ -45,6 +45,16 @@ helps understanding the Brazilian pattern in consumer complains.
 
 ## Data Pipeline
 
+The data pipeline has two main DAGs, Procon DAG and Consumidorgovbr DAG,
+responsible to get and do the wrangling in this datasets whenever there 
+are new files on their S3 keys.
+
+It is scheduled to run every hour a very reasonable amount of time to
+check if someone manually have put a new file to the buckets. As 
+these are Brazilian government datasets public available there is not
+a right cadence they made new information available, so someone have to 
+check it.   
+
 ## Docker Airflow Enviroment 
 
 There are two containers, one running airflow, the other postgres.
@@ -79,9 +89,15 @@ To use Airflow web interface, enter on http://localhost:8080/admin
 
 ## Tasks
 
-- Check if there is divergence between procon and consumidorgovbr
+- [ ] Check if there is divergence between procon and consumidorgovbr
 after importing data to ft_complaints
-- Improve CEP coverage by checking at cepaberto API the states that 
+- [ ] Analyze resulting DW
+- [ ] Improve CEP coverage by checking at cepaberto API the states that 
 does not have the database
-- Create the analysis
-- Create a dashboard
+- [ ] Check for keys improvements
+- [ ] Check for structural improvements (how data is distributed on redshift)
+- [ ] Make every DW table anc column name at the same pattern
+- [ ] CEP Dag should be part of the Procon DAG ()
+- [ ] Import all CSVs
+- [ ] Create a dashboard
+- [ ] Data Quality Check Operators!

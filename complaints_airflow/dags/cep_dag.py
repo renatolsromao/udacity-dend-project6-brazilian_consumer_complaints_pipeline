@@ -1,12 +1,11 @@
 import datetime
 
-from airflow.utils.helpers import chain
-
 from airflow import DAG
+from airflow.utils.helpers import chain
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.postgres_operator import PostgresOperator
-from airflow.operators import (S3ToRedshiftCustomOperator)
 
+from airflow.operators import (S3ToRedshiftCustomOperator)
 from helpers.cep_queries import cep_queries
 
 s3_bucket = 'rlsr-dend'

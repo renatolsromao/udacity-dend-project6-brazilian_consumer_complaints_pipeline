@@ -1,27 +1,30 @@
 import datetime
 
-from airflow.contrib.operators.s3_list_operator import S3ListOperator
-
 from airflow import DAG
 from airflow.utils.helpers import chain
 from airflow.operators.sensors import S3KeySensor
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.postgres_operator import PostgresOperator
-from airflow.operators import (S3ToRedshiftCustomOperator, S3ConvertFilesEncodingOperator, S3DeleteFromContextOperator)
 
-from helpers.consumidorgovbr_queries import consumidorgovbr_queries
-from helpers.dimensions_queries import dimensions_queries
+from subdags.delete_s3_key_files_subdag import delete_s3_key_files_subdag
 from helpers.fact_queries import fact_queries
+from helpers.dimensions_queries import dimensions_queries
+from helpers.consumidorgovbr_queries import consumidorgovbr_queries
+from airflow.operators import (S3ConvertFilesEncodingOperator, S3ToRedshiftCustomOperator)
 
+DAG_NAME = 'consumidorgovbr_dag'
+start_date = datetime.datetime(2019, 9, 1)
+
+aws_credentials = 'aws_credentials'
 s3_bucket = 'rlsr-dend'
 s3_key = 'consumer-complaints/consumidorgovbr'
-s3_key_processed = 'consumer-complaints/consumidorgovbr'
 table = 'cgb'
 
 dag = DAG(
-    'consumidorgovbr_dag',
+    DAG_NAME,
     description='Load data from consumidor.gov.br complaints from S3 to Redshift.',
-    start_date=datetime.datetime(2019, 8, 1),
+    start_date=start_date,
     schedule_interval=datetime.timedelta(hours=1),
     catchup=False,
     max_active_runs=1,
@@ -35,7 +38,7 @@ has_file_to_process = S3KeySensor(
     bucket_name=s3_bucket,
     bucket_key=f'{s3_key}/*.csv',
     wildcard_match=True,
-    aws_conn_id='aws_credentials',
+    aws_conn_id=aws_credentials,
     timeout=31,
     poke_interval=30,
 )
@@ -43,7 +46,7 @@ has_file_to_process = S3KeySensor(
 convert_file_encoding = S3ConvertFilesEncodingOperator(
     task_id='convert_file_encoding',
     dag=dag,
-    aws_conn_id='aws_credentials',
+    aws_conn_id=aws_credentials,
     s3_bucket=s3_bucket,
     s3_prefix=s3_key,
     original_encoding='CP1252',
@@ -68,7 +71,7 @@ load_consumidorgovbr_stage_data = S3ToRedshiftCustomOperator(
     s3_key=s3_key,
     table=table,
     redshift_conn_id='redshift_conn',
-    aws_conn_id='aws_credentials',
+    aws_conn_id=aws_credentials,
     copy_options=[
         "DELIMITER AS ';'",
         "DATEFORMAT AS 'DD/MM/YYYY'",
@@ -77,20 +80,11 @@ load_consumidorgovbr_stage_data = S3ToRedshiftCustomOperator(
     ]
 )
 
-list_s3_processed_s3_files = list_keys = S3ListOperator(
-    task_id='list_s3_processed_s3_files',
+delete_s3_key_files = SubDagOperator(
+    task_id='delete_s3_key_files',
     dag=dag,
-    bucket=s3_bucket,
-    prefix=s3_key,
-    aws_conn_id='aws_credentials',
-)
-
-delete_processed_s3_files = S3DeleteFromContextOperator(
-    task_id='delete_proccessed_s3_files',
-    dag=dag,
-    bucket=s3_bucket,
-    context_task_id='list_s3_processed_s3_files',
-    aws_conn_id='aws_credentials',
+    subdag=delete_s3_key_files_subdag(
+        DAG_NAME, 'delete_s3_key_files', start_date, s3_bucket, s3_key, aws_credentials)
 )
 
 load_dm_date_data = PostgresOperator(
@@ -166,5 +160,4 @@ chain(
     end_operator
 )
 
-list_s3_processed_s3_files.set_upstream(load_consumidorgovbr_stage_data)
-delete_processed_s3_files.set_upstream(list_s3_processed_s3_files)
+delete_s3_key_files.set_upstream(load_consumidorgovbr_stage_data)

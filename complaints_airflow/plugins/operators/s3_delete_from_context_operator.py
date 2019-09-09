@@ -1,5 +1,3 @@
-from typing import Union, List
-
 from airflow.contrib.operators.s3_delete_objects_operator import S3DeleteObjectsOperator
 from airflow.utils.decorators import apply_defaults
 
