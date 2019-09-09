@@ -51,11 +51,11 @@ procon_queries = {
     """,
 
     'insert_dm_region': """
-        insert into dm_region (city, region, macroregion)
+        insert into dm_region (city, state, region)
         select distinct
             zc.city,
-            state_abbr,
-            NULL as region
+            zc.state_abbr,
+            zc.region
         from staging.procon as proc
         left join staging.brzipcode as zc on zc.zipcode = proc.cep_consumidor
         left join dm_region as reg on zc.city = reg.city

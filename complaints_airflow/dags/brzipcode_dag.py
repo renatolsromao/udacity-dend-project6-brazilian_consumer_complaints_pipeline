@@ -42,11 +42,8 @@ load_brzipcode_table_data = S3ToRedshiftCustomOperator(
     schema='staging',
     table='brzipcode',
     copy_options=[
-        "delimiter ','",
-        "csv quote as '\"'",
-        "IGNOREHEADER AS 1",
+        "delimiter '|'",
         "EMPTYASNULL",
-        "NULL AS 'NULL'",
     ]
 )
 

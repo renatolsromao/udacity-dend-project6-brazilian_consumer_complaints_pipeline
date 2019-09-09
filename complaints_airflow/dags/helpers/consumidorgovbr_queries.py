@@ -62,7 +62,7 @@ consumidorgovbr_queries = {
     """,
 
     'insert_dm_region': """
-        insert into dm_region (city, region, macroregion)
+        insert into dm_region (city, state, region)
         select distinct
             cidade,
             uf,

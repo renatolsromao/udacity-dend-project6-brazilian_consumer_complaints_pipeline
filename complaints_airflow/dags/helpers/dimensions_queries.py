@@ -22,8 +22,8 @@ dimensions_queries = {
     'create_dm_region': """
         create table if not exists dm_region (
             city text PRIMARY KEY,
-            region text,
-            macroregion text
+            state text,
+            region text
         );
     """,
 
