@@ -10,4 +10,6 @@ class CustomPlugin(AirflowPlugin):
 
     operators = [
         operators.S3ToRedshiftCustomOperator,
+        operators.S3ConvertFilesEncodingOperator,
+        operators.S3DeleteFromContextOperator,
     ]

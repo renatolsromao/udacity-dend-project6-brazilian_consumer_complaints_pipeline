@@ -1,11 +1,11 @@
 consumidorgovbr_queries = {
 
     'drop_stage_table': """
-        drop table if exists {};
+        drop table if exists staging.cgb;
     """,
 
     'create_stage_table': """
-        create table {} (
+        create table staging.cgb (
             gestor text,
             canal text, 
             regiao varchar(2),
@@ -48,18 +48,16 @@ consumidorgovbr_queries = {
     """,
 
     'insert_dm_date': """
-        insert into dm_date (ts, year, quarter, month, day, day_of_week, hour, minute) 
+        insert into dm_date (ts, year, quarter, month, day, day_of_week) 
         select distinct
             data_abertura as ts,    
             date_part('y', data_abertura) as year,
             date_part('qtr', data_abertura) as quarter,
             date_part('mon', data_abertura) as month,
             date_part('d', data_abertura) as day,
-            date_part('dow', data_abertura) as day_of_week,
-            substring(trim(hora_abertura), 0, 3)::int as hour,
-            substring(trim(hora_abertura), 4, 2)::int as minute
-        from sample as s
-        left join dm_date as d on d.ts = s.data_abertura
+            date_part('dow', data_abertura) as day_of_week
+        from staging.cgb as c
+        left join dm_date as d on c.data_abertura = d.ts
         where d.ts is null;
     """,
 
@@ -69,18 +67,18 @@ consumidorgovbr_queries = {
             cidade,
             uf,
             regiao
-        from sample as s
-        left join dm_region as r on s.cidade = r.city
+        from staging.cgb as c
+        left join dm_region as r on c.cidade = r.city
         where r.city is null
     """,
 
-    'insert_dm_consumer': """
-        insert into dm_consumer (age, gender)
+    'insert_dm_consumer_profile': """
+        insert into dm_consumer_profile (age, gender)
         select distinct
             faixa_etaria as age,
             sexo as gender
-        from sample as s
-        left join dm_consumer as c on (c.age = s.faixa_etaria and c.gender = s.sexo)
+        from staging.cgb as cgb
+        left join dm_consumer_profile as c on (c.age = cgb.faixa_etaria and c.gender = cgb.sexo)
         where c.age is null;
     """,
 
@@ -89,8 +87,8 @@ consumidorgovbr_queries = {
         select distinct
             nome_fantasia,
             segmento_mercado
-        from sample as s
-        left join dm_company as c on c.name = s.nome_fantasia
+        from staging.cgb as cgb
+        left join dm_company as c on c.name = cgb.nome_fantasia
         where c.name is null;
     """,
 
@@ -105,8 +103,8 @@ consumidorgovbr_queries = {
             canal as channel,
             tempo_resposta as time_to_answer,
             nota as rating
-        from sample as s
-        left join dm_consumer as c on (s.faixa_etaria = c.age and s.sexo = c.gender)
+        from staging.cgb as cgb
+        left join dm_consumer_profile as c on (cgb.faixa_etaria = c.age and cgb.sexo = c.gender)
     """,
 
 }
