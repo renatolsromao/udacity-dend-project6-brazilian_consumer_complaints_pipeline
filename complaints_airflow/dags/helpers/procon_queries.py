@@ -23,7 +23,7 @@ procon_queries = {
             grupo_problema text,
             sexo_consumidor char(1),
             faixa_etaria_consumidor text,
-            cep_consumidor int,
+            cep_consumidor text,
             tipo_fornecedor int,
             razao_social_sindec text,
             nome_fantasia_sindec text,

@@ -71,7 +71,7 @@ load_procon_stage_data = S3ToRedshiftCustomOperator(
         "DATEFORMAT AS 'DD/MM/YYYY'",
         "IGNOREHEADER AS 1",
         "EMPTYASNULL",
-        "NULL AS 'NULL'"
+        "NULL AS 'NULL'",
     ]
 )
 
